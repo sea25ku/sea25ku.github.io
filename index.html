@@ -443,7 +443,33 @@
         }
 
         function generateEvents(mode) {
+            const events = [];
+            // schedule_2026 のデータがない場合は空の配列にする
             const schedule = allData.schedule || [];
+        
+            schedule.forEach(d => {
+                // --- 修正箇所：日付やタイトルが空の場合はスキップする ---
+                if (!d || !d.date) return; 
+        
+                try {
+                    // スラッシュ(/)をハイフン(-)に変換し、時間部分が含まれていても日付のみ抽出する
+                    // 2026/06/12 22:30 -> 2026-06-12
+                    let dateStr = String(d.date).replace(/\//g, '-').split(' ')[0].split('T')[0];
+        
+                    events.push({
+                        title: d.title || '無題',
+                        start: dateStr,
+                        extendedProps: {
+                            ...d,
+                            originalDate: d.date 
+                        },
+                        backgroundColor: getEventColor(d.type),
+                        borderColor: getEventColor(d.type)
+                    });
+                } catch (e) {
+                    console.error("データの処理中にエラー:", e, d);
+                }
+            });
                 
                 if (mode === 'event') {
                     const processed = [];
