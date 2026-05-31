@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .fc { font-size: 0.8rem; background: white; }
         .fc-toolbar-title { font-size: 1.1rem !important; font-weight: 800 !important; }
@@ -351,8 +352,10 @@
     </div>
 
     <script>
-        const BASE_URL = 'https://script.google.com/macros/s/AKfycbyz6JVS-ZF5MpWCCpFILDEwGuvEaeNSq-O3f6VgN21Mer2jZM870TuLNh2kVUDufCCS6A/exec';
-        const GAS_API_URL = BASE_URL + (BASE_URL.indexOf('?') > -1 ? '&' : '?') + 'type=data';
+                // --- 修正箇所：初期化 ---
+        const SUPABASE_URL = 'https://zcuwtkndbpqhjdphapkk.supabase.co';
+        const SUPABASE_ANON_KEY = 'あなたのANON_KEY';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let allData = { schedule: [], members: [] };
         let calendar;
@@ -389,23 +392,36 @@
             init();
         };
 
+// --- 修正箇所：init関数 ---
         async function init() {
             const loader = document.getElementById('loader');
             loader.classList.remove('hidden');
             
-            google.script.run
-                .withSuccessHandler(function(data) {
-                    allData = data;
-                    initCalendar();
-                    renderList(); // リストを初期描画
-                    renderMemberGrid();
-                    loader.classList.add('hidden');
-                })
-                .withFailureHandler(function(err) {
-                    console.error("Load failed:", err);
-                    loader.classList.add('hidden');
-                })
-                .getFullData();
+            try {
+                // scheduleテーブルとmembersテーブルから同時にデータを取得
+                const [resSchedule, resMembers] = await Promise.all([
+                    _supabase.from('schedule').select('*'),
+                    _supabase.from('members').select('*')
+                ]);
+
+                if (resSchedule.error) throw resSchedule.error;
+                if (resMembers.error) throw resMembers.error;
+
+                // GAS版と同じデータ構造にセット
+                allData = {
+                    schedule: resSchedule.data,
+                    members: resMembers.data
+                };
+
+                initCalendar();
+                renderList();
+                renderMemberGrid();
+            } catch (err) {
+                console.error("Load failed:", err);
+                alert("データの取得に失敗しました。");
+            } finally {
+                loader.classList.add('hidden');
+            }
         }
 
         function initCalendar() {
