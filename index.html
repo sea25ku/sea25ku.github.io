@@ -385,7 +385,11 @@
             'りんと': { bg: '#fef9c3', text: '#854d0e' }  // 黄色
         };
 
-        
+       // イベントの色を決定するヘルパー関数
+        function getEventColor(typeOrTag) {
+            const cfg = THEME_COLORS[typeOrTag] || THEME_COLORS['default'];
+            return cfg.bar;
+        } 
         
 
         window.onload = function() {
@@ -442,68 +446,63 @@
             calendar.render();
         }
 
-        function generateEvents(mode) {
-            const events = [];
+      function generateEvents(mode) {
             const schedule = allData.schedule || [];
+            const processed = [];
+            const seen = new Set(); 
         
             if (mode === 'event') {
-                const processed = [];
-                const seen = new Set(); // 重複チェック用
-        
                 schedule.forEach(d => {
                     if (!d || !d.date) return;
-                    
-                    // 日付の正規化 (YYYY-MM-DD)
-                    const dateStr = d.date.includes('T') ? d.date.split('T')[0] : d.date.replace(/\//g, '-').split(' ')[0];
-                    // タイトルから「1部/2部」を除去して同一イベントとして扱う
-                    const baseTitle = d.title.split(/[12１２一二]部/)[0].trim();
-                    const key = `${dateStr}_${baseTitle}`;
         
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        const cfg = THEME_COLORS[d.tag] || THEME_COLORS[d.type] || THEME_COLORS['default'];
-                        processed.push({
-                            title: baseTitle,
-                            start: dateStr,
-                            display: 'block',
-                            backgroundColor: cfg.bar,
-                            borderColor: cfg.bar,
-                            extendedProps: { raw: d } // モーダル表示用に元のデータを保持
-                        });
+                    try {
+                        // 日付の整形
+                        const dateStr = d.date.includes('T') ? d.date.split('T')[0] : d.date.replace(/\//g, '-').split(' ')[0];
+                        
+                        // 「1部/2部」を無視してカレンダー上は1つにまとめる場合
+                        const baseTitle = d.title.split(/[12１２一二]部/)[0].trim();
+                        const key = `${dateStr}_${baseTitle}`;
+        
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            // getEventColorの代わりに直接THEME_COLORSを参照（エラー回避）
+                            const cfg = THEME_COLORS[d.tag] || THEME_COLORS[d.type] || THEME_COLORS['default'];
+                            
+                            processed.push({
+                                title: baseTitle,
+                                start: dateStr,
+                                display: 'block',
+                                backgroundColor: cfg.bar,
+                                borderColor: cfg.bar,
+                                extendedProps: { raw: d }
+                            });
+                        }
+                    } catch (e) {
+                        console.error("データの処理中にエラー:", e, d);
                     }
                 });
                 return processed;
             }
         
-            // 申込期間・入金期間などの表示モード (fc_app, fc_pay, general)
+            // 申込期間などのフィルタモード
             const groups = [];
             schedule.forEach(d => {
                 let start, end;
                 if (mode === 'fc_app' && d.fc_start && d.fc_end) { 
-                    start = d.fc_start.split('T')[0]; 
-                    end = d.fc_end.split('T')[0]; 
+                    start = d.fc_start.split('T')[0]; end = d.fc_end.split('T')[0]; 
                 } else if (mode === 'fc_pay' && d.fc_result && d.fc_payment) { 
-                    start = d.fc_result.split('T')[0]; 
-                    end = d.fc_payment.split('T')[0]; 
+                    start = d.fc_result.split('T')[0]; end = d.fc_payment.split('T')[0]; 
                 } else if (mode === 'general' && d.general_start && d.general_end) { 
-                    start = d.general_start.split('T')[0]; 
-                    end = d.general_end.split('T')[0]; 
+                    start = d.general_start.split('T')[0]; end = d.general_end.split('T')[0]; 
                 }
                 
                 if (!start || !end) return;
         
-                // 同じ期間・同じタグのものをまとめる
                 let group = groups.find(g => g.tag === d.tag && g.start === start && g.end === end);
                 if (group) {
                     group.titles.push(d.title);
                 } else {
-                    groups.push({
-                        tag: d.tag,
-                        start: start,
-                        end: end,
-                        titles: [d.title],
-                        raw: d
-                    });
+                    groups.push({ tag: d.tag, start: start, end: end, titles: [d.title], raw: d });
                 }
             });
         
@@ -519,7 +518,6 @@
                 };
             });
         }
-
         // --- 1. データの統合・集約ロジック ---
         function getAggregatedEvents(events) {
             const aggregated = [];
