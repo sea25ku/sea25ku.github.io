@@ -400,7 +400,7 @@
             try {
                 // scheduleテーブルとmembersテーブルから同時にデータを取得
                 const [resSchedule, resMembers] = await Promise.all([
-                    _supabase.from('schedule').select('*'),
+                    _supabase.from('schedule_2025').select('*'),
                     _supabase.from('members').select('*')
                 ]);
 
