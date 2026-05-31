@@ -444,93 +444,78 @@
 
         function generateEvents(mode) {
             const events = [];
-            // schedule_2026 のデータがない場合は空の配列にする
             const schedule = allData.schedule || [];
         
-            schedule.forEach(d => {
-                // --- 修正箇所：日付やタイトルが空の場合はスキップする ---
-                if (!d || !d.date) return; 
+            if (mode === 'event') {
+                const processed = [];
+                const seen = new Set(); // 重複チェック用
         
-                try {
-                    // スラッシュ(/)をハイフン(-)に変換し、時間部分が含まれていても日付のみ抽出する
-                    // 2026/06/12 22:30 -> 2026-06-12
-                    let dateStr = String(d.date).replace(/\//g, '-').split(' ')[0].split('T')[0];
+                schedule.forEach(d => {
+                    if (!d || !d.date) return;
+                    
+                    // 日付の正規化 (YYYY-MM-DD)
+                    const dateStr = d.date.includes('T') ? d.date.split('T')[0] : d.date.replace(/\//g, '-').split(' ')[0];
+                    // タイトルから「1部/2部」を除去して同一イベントとして扱う
+                    const baseTitle = d.title.split(/[12１２一二]部/)[0].trim();
+                    const key = `${dateStr}_${baseTitle}`;
         
-                    events.push({
-                        title: d.title || '無題',
-                        start: dateStr,
-                        extendedProps: {
-                            ...d,
-                            originalDate: d.date 
-                        },
-                        backgroundColor: getEventColor(d.type),
-                        borderColor: getEventColor(d.type)
-                    });
-                } catch (e) {
-                    console.error("データの処理中にエラー:", e, d);
-                }
-            });
-                
-                if (mode === 'event') {
-                    const processed = [];
-                    schedule.forEach(d => {
-                        if (!d.date) return;
-                        const dateStr = d.date.split('T')[0];
-                        // タイトルから部を除去
-                        const baseTitle = d.title.split(/[12１２一二]部/)[0].trim();
-                        
-                        // 同日・同タイトルのものが既に登録されているかチェック
-                        const existing = processed.find(p => p.start === dateStr && p.title === baseTitle);
-                        
-                        if (!existing) {
-                            const cfg = THEME_COLORS[d.tag] || THEME_COLORS[d.type] || THEME_COLORS['default'];
-                            processed.push({ 
-                                title: baseTitle, 
-                                start: dateStr, 
-                                display: 'block', 
-                                color: cfg.bar, 
-                                extendedProps: { raw: d } // 代表として1つ渡す（モーダル側で再検索するため）
-                            });
-                        }
-                    });
-                    return processed;
-                }
-
-            // 申込期間などのグループ化表示
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        const cfg = THEME_COLORS[d.tag] || THEME_COLORS[d.type] || THEME_COLORS['default'];
+                        processed.push({
+                            title: baseTitle,
+                            start: dateStr,
+                            display: 'block',
+                            backgroundColor: cfg.bar,
+                            borderColor: cfg.bar,
+                            extendedProps: { raw: d } // モーダル表示用に元のデータを保持
+                        });
+                    }
+                });
+                return processed;
+            }
+        
+            // 申込期間・入金期間などの表示モード (fc_app, fc_pay, general)
             const groups = [];
             schedule.forEach(d => {
                 let start, end;
-                if (mode === 'fc_app' && d.fc_start) { start = d.fc_start.split('T')[0]; end = d.fc_end.split('T')[0]; }
-                else if (mode === 'fc_pay' && d.fc_result) { start = d.fc_result.split('T')[0]; end = d.fc_payment.split('T')[0]; }
-                else if (mode === 'general' && d.general_start) { start = d.general_start.split('T')[0]; end = d.general_end.split('T')[0]; }
+                if (mode === 'fc_app' && d.fc_start && d.fc_end) { 
+                    start = d.fc_start.split('T')[0]; 
+                    end = d.fc_end.split('T')[0]; 
+                } else if (mode === 'fc_pay' && d.fc_result && d.fc_payment) { 
+                    start = d.fc_result.split('T')[0]; 
+                    end = d.fc_payment.split('T')[0]; 
+                } else if (mode === 'general' && d.general_start && d.general_end) { 
+                    start = d.general_start.split('T')[0]; 
+                    end = d.general_end.split('T')[0]; 
+                }
                 
                 if (!start || !end) return;
-
+        
+                // 同じ期間・同じタグのものをまとめる
                 let group = groups.find(g => g.tag === d.tag && g.start === start && g.end === end);
                 if (group) {
                     group.titles.push(d.title);
-                    group.timeList.push({ open: d.open, start: d.start, fullTitle: d.title });
                 } else {
                     groups.push({
                         tag: d.tag,
                         start: start,
                         end: end,
                         titles: [d.title],
-                        timeList: [{ open: d.open, start: d.start, fullTitle: d.title }],
                         raw: d
                     });
                 }
             });
-
+        
             return groups.map(g => {
                 const cfg = THEME_COLORS[g.tag] || THEME_COLORS[g.raw.type] || THEME_COLORS['default'];
                 return {
-                    title: g.titles[0].split(/[12１２一二]部/)[0].trim(),
+                    title: g.tag || g.titles[0].split(/[12１２一二]部/)[0].trim(),
                     start: g.start,
                     end: g.end,
-                    display: 'block', // バー形式を強制
+                    display: 'block',
                     color: cfg.bar,
-                    extendedProps: { raw: { ...g.raw, timeList: g.timeList } }
+                    extendedProps: { raw: g.raw }
                 };
             });
         }
