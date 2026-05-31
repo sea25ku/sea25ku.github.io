@@ -483,21 +483,29 @@
                 });
                 return processed;
             }
-        
-            // 申込期間などのフィルタモード
+
+            // 申込期間などのフィルタモード（修正版）
             const groups = [];
             schedule.forEach(d => {
                 let start, end;
-                if (mode === 'fc_app' && d.fc_start && d.fc_end) { 
-                    start = d.fc_start.split('T')[0]; end = d.fc_end.split('T')[0]; 
-                } else if (mode === 'fc_pay' && d.fc_result && d.fc_payment) { 
-                    start = d.fc_result.split('T')[0]; end = d.fc_payment.split('T')[0]; 
-                } else if (mode === 'general' && d.general_start && d.general_end) { 
-                    start = d.general_start.split('T')[0]; end = d.general_end.split('T')[0]; 
+                // 日付文字列から YYYY-MM-DD を抽出する補助関数
+                const parseDate = (str) => {
+                    if (!str || str === '-') return null;
+                    return str.includes('T') ? str.split('T')[0] : str.split(' ')[0].replace(/\//g, '-');
+                };
+            
+                if (mode === 'fc_app') { 
+                    start = parseDate(d.fc_start); end = parseDate(d.fc_end); 
+                } else if (mode === 'fc_pay') { 
+                    start = parseDate(d.fc_result); end = parseDate(d.fc_payment); 
+                } else if (mode === 'general') { 
+                    start = parseDate(d.general_start); end = parseDate(d.general_end); 
                 }
                 
                 if (!start || !end) return;
-        
+            
+                // FullCalendarの終了日は「その日の00:00」までと判定されるため、
+                // 期間終了日の翌日をセットするか、そのまま表示するか調整が必要な場合があります。
                 let group = groups.find(g => g.tag === d.tag && g.start === start && g.end === end);
                 if (group) {
                     group.titles.push(d.title);
