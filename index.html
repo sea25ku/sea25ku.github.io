@@ -392,32 +392,34 @@
             init();
         };
 
-// --- 修正箇所：init関数 ---
+        // --- init関数の書き換え ---
         async function init() {
             const loader = document.getElementById('loader');
             loader.classList.remove('hidden');
             
             try {
-                // scheduleテーブルとmembersテーブルから同時にデータを取得
+                // ★ここを schedule から schedule_2026 に変更！
                 const [resSchedule, resMembers] = await Promise.all([
-                    _supabase.from('schedule_2025').select('*'),
+                    _supabase.from('schedule_2026').select('*'), // ←ここを修正
                     _supabase.from('members').select('*')
                 ]);
-
+        
                 if (resSchedule.error) throw resSchedule.error;
                 if (resMembers.error) throw resMembers.error;
-
+        
                 // GAS版と同じデータ構造にセット
                 allData = {
                     schedule: resSchedule.data,
                     members: resMembers.data
                 };
-
+        
                 initCalendar();
                 renderList();
                 renderMemberGrid();
             } catch (err) {
                 console.error("Load failed:", err);
+                // エラー内容を詳しく見るためのログ
+                console.log("Error details:", err); 
                 alert("データの取得に失敗しました。");
             } finally {
                 loader.classList.add('hidden');
