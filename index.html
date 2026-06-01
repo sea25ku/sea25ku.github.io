@@ -359,8 +359,9 @@
 
         let allData = { schedule: [], members: [] };
         let calendar;
-        let currentYear = 2026;
-        let currentMonth = 5;
+        const today = new Date();
+        let currentYear = today.getFullYear();
+        let currentMonth = today.getMonth() + 1;
 
         const THEME_COLORS = {
             'Milky Magic': { bar: '#3b82f6' },
@@ -431,10 +432,11 @@
         }
 
         function initCalendar() {
+            const todayStr = new Date().toISOString().split('T')[0];
             const calendarEl = document.getElementById('calendar');
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
-                initialDate: '2026-05-01',
+                initialDate: todayStr,
                 locale: 'ja',
                 height: 'auto',
                 displayEventTime: false,
