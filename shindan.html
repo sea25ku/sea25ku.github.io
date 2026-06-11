@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>推しメン診断 - みるもん非公式</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="side-menu" class="fixed inset-0 bg-white z-[100] hidden overflow-y-auto">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-xl font-black italic text-gray-800">MENU</h2>
+                <button onclick="toggleMenu()" class="text-3xl text-gray-400">&times;</button>
+            </div>
+            <ul class="space-y-6 text-lg font-bold">
+                <li><a href="index.html"><i class="fa-solid fa-calendar-days mr-3"></i>Schedule</a></li>
+                <li><a href="index.html"><i class="fa-solid fa-share-nodes mr-3"></i>SNS/Profile</a></li>
+                <li><a href="shindan.html" class="text-indigo-600"><i class="fa-solid fa-gamepad mr-3"></i>推しメン診断</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <header class="bg-white p-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
+        <h1 class="text-xl font-bold italic cursor-pointer" onclick="location.href='index.html'">みるもん非公式</h1>
+        <div class="flex items-center gap-4">
+            <button onclick="toggleMenu()" class="text-xl text-gray-600"><i class="fa-solid fa-bars"></i></button>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto p-4">
+        <div class="mb-4">
+            <a href="index.html" class="text-blue-500 text-sm font-bold"><i class="fa-solid fa-chevron-left mr-1"></i>ホームに戻る</a>
+        </div>
+
+        <div class="bg-white rounded-[2.5rem] p-6 shadow-sm border border-gray-100 text-center">
+            <div id="shindan-start">
+                <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fa-solid fa-heart-pulse text-3xl text-indigo-400"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">あなたにぴったりの推しは？</h3>
+                <p class="text-xs text-gray-500 leading-relaxed mb-6">
+                    3つの質問に答えて、Milky Monsterのメンバーからあなたに相性抜群の推しメンを診断します！
+                </p>
+                <button onclick="startShindan()" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-full shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all w-full text-sm">
+                    診断をスタート
+                </button>
+            </div>
+
+            <div id="shindan-question" class="hidden text-left">
+                <div class="mb-4 flex justify-between items-center border-b pb-2">
+                    <span id="shindan-progress" class="text-[10px] font-bold text-indigo-500 tracking-wider uppercase">Question 1/3</span>
+                </div>
+                <h4 id="shindan-q-text" class="text-sm font-bold text-gray-800 mb-6 leading-normal">質問内容</h4>
+                <div id="shindan-options" class="space-y-3"></div>
+            </div>
+
+            <div id="shindan-result" class="hidden">
+                <div class="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2">Diagnosis Result</div>
+                <h4 class="text-base font-bold text-gray-500 mb-4">あなたにおすすめの推しメンは...</h4>
+                <div class="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100/50 mb-6 flex flex-col items-center">
+                    <img id="result-mem-img" src="" class="w-24 h-24 rounded-full object-cover mb-3 border-4 border-white shadow-md">
+                    <div id="result-mem-name" class="text-xl font-black text-gray-800 mb-1"></div>
+                    <p id="result-mem-intro" class="text-xs text-gray-600 leading-relaxed mt-2 text-center max-w-xs"></p>
+                </div>
+                <div class="flex gap-2">
+                    <a href="index.html" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl text-xs shadow-md flex items-center justify-center">プロフィールに戻る</a>
+                    <button onclick="startShindan()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl text-xs">もう一度診断する</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const SUPABASE_URL = 'https://zcuwtkndbpqhjdphapkk.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjdXd0a25kYnBxaGpkcGhhcGtrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxOTMwMDgsImV4cCI6MjA5NTc2OTAwOH0.k6gRekFS8d5N73IahQbjCL52ZY48_kjFk-P3Xcnh44M';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let membersData = [];
+        let currentQuestionIndex = 0;
+        let selectedScores = {};
+
+        const SHINDAN_QUESTIONS = [
+            {
+                text: "地球最後の日に食べたいものはどれ？",
+                options: [
+                    { text: "今まで食べたことがない珍しい料理", weights: ["しずく"] },
+                    { text: "豚汁やカレーなど、慣れ親しんだ料理", weights: ["いなふ", "ひい", "りょう"] },
+                    { text: "シンプルに好きな料理", weights: ["たける", "りんと"] },
+                    { text: "好きな料理を沢山食べたり、好きなアレンジをしてみる", weights: ["はるか", "てん"] }
+                ]
+            },
+            {
+                text: "猫派？犬派？",
+                options: [
+                    { text: "猫", weights: ["いなふ", "しずく", "りんと"] },
+                    { text: "犬", weights: ["たける", "てん", "はるか", "ひい", "りょう"] }
+                    ]
+            },
+            {
+                text: "ご飯派？パン派？",
+                options: [
+                    { text: "ご飯", weights: ["しずく", "たける", "てん", "はるか", "ひい", "りょう" , "りんと"] },
+                    { text: "パン", weights: ["いなふ", "てん"] }
+                ]
+            },
+            {
+                text: "1か月同じものを食べ続けるとしたら？",
+                options: [
+                    { text: "ピザ", weights: ["いなふ"] },
+                    { text: "カレー", weights: ["りょう", "ひい"] },
+                    { text: "うどん", weights: ["はるか"] },
+                    { text: "お刺身", weights: ["たける", "しずく"] },
+                    { text: "塩", weights: ["てん"] }
+                ]
+            },
+            {
+                text: "海派？山派？",
+                options: [
+                    { text: "海", weights: ["いなふ", "たける"] },
+                    { text: "山", weights: ["しずく", "はるか", "ひい", "りょう", "りんと"] },
+                    { text: "やっぱり陸", weights: ["てん"] }
+                ]
+            },
+            {
+                text: "インドア？アウトドア？",
+                options: [
+                    { text: "インドア", weights: ["しずく", "はるか", "ひい", "りんと"] },
+                    { text: "一人だとインドア", weights: ["てん"] },
+                    { text: "アウトドア", weights: ["いなふ", "たける", "りょう"] }
+                ]
+            },
+            {
+                text: "一生ラーメン禁止かお菓子禁止ならどちらを選ぶ？",
+                options: [
+                    { text: "ラーメン禁止", weights: ["いなふ", "しずく", "たける", "てん", "はるか", "ひい"] },
+                    { text: "お菓子禁止", weights: ["りんと", "りょう"] }
+                ]
+            },
+            {
+                text: "コンビニで必ず買ってしまうものは？",
+                options: [
+                    { text: "カフェラテやジャスミンティーなど、決まった飲み物", weights: ["いなふ","てん"] },
+                    { text: "レジ横にあるホットスナック", weights: ["たける"] },
+                    { text: "グミやラムネ、チョコなどのお菓子", weights: ["ひい", "しずく", "りょう"] },
+                    { text: "菓子パンやスイーツ", weights: ["いなふ", "りんと", "はるか"] },
+                    { text: "そもそも同じものはあまり買わない", weights: ["しずく"] },                        
+                ]
+            },
+            {
+                text: "きのこの山とたけのこの里、どっちが好き？",
+                options: [
+                    { text: "きのこの山", weights: ["いなふ", "しずく", "たける", "りんと", "はるか", "ひい"] },
+                    { text: "たけのこの里", weights: ["てん", "りょう"] }
+                ]
+            },
+            {
+                text: "たいやきは頭から？しっぽから？",
+                options: [
+                    { text: "頭", weights: ["いなふ", "しずく", "たける", "りょう", "はるか", "ひい"] },
+                    { text: "たけのこの里", weights: ["てん", "りんと"] }
+                ]
+            },            
+        ];
+
+        window.onload = async function() {
+            try {
+                const { data, error } = await _supabase.from('members').select('*');
+                if (!error) membersData = data;
+            } catch (e) { console.error(e); }
+        };
+
+        function startShindan() {
+            currentQuestionIndex = 0;
+            selectedScores = {};
+            membersData.forEach(m => { selectedScores[m.name] = 0; });
+            document.getElementById('shindan-start').classList.add('hidden');
+            document.getElementById('shindan-result').classList.add('hidden');
+            document.getElementById('shindan-question').classList.remove('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const q = SHINDAN_QUESTIONS[currentQuestionIndex];
+            document.getElementById('shindan-progress').innerText = `Question ${currentQuestionIndex + 1}/${SHINDAN_QUESTIONS.length}`;
+            document.getElementById('shindan-q-text').innerText = q.text;
+            document.getElementById('shindan-options').innerHTML = q.options.map((opt, idx) => `
+                <button onclick="answerQuestion(${idx})" class="w-full text-left bg-gray-50 border p-4 rounded-xl text-xs font-medium text-gray-700 hover:bg-indigo-50/50 transition-all">${opt.text}</button>
+            `).join('');
+        }
+
+        function answerQuestion(idx) {
+            SHINDAN_QUESTIONS[currentQuestionIndex].options[idx].weights.forEach(name => {
+                if (selectedScores[name] !== undefined) selectedScores[name]++;
+            });
+            currentQuestionIndex++;
+            if (currentQuestionIndex < SHINDAN_QUESTIONS.length) showQuestion();
+            else showShindanResult();
+        }
+
+        function showShindanResult() {
+            document.getElementById('shindan-question').classList.add('hidden');
+            document.getElementById('shindan-result').classList.remove('hidden');
+            let maxScore = -1, resultName = '';
+            for (const [name, score] of Object.entries(selectedScores)) {
+                if (score > maxScore) { maxScore = score; resultName = name; }
+            }
+            const m = membersData.find(mem => mem.name === resultName) || membersData[0];
+            if (m) {
+                document.getElementById('result-mem-img').src = m.image || '';
+                document.getElementById('result-mem-name').innerText = (m.symbol || '') + ' ' + m.name;
+                document.getElementById('result-mem-intro').innerText = m.description || 'あなたにぴったりの推しメンです！';
+            }
+        }
+
+        function toggleMenu() { document.getElementById('side-menu').classList.toggle('hidden'); }
+    </script>
+</body>
+</html>
