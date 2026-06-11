@@ -40,9 +40,9 @@
                 <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6">
                     <i class="fa-solid fa-heart-pulse text-3xl text-indigo-400"></i>
                 </div>
-                <h3 class="text-lg font-bold text-gray-800 mb-2">あなたにぴったりの推しは？</h3>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">みるもんメンバーで最も感覚が近いのは誰？</h3>
                 <p class="text-xs text-gray-500 leading-relaxed mb-6">
-                    3つの質問に答えて、Milky Monsterのメンバーからあなたに相性抜群の推しメンを診断します！
+                    2025年4月ごろの配信での質問コーナーへの回答や、50の質問の回答をもとに、あなたと最も感覚が近いメンバーを診断します！
                 </p>
                 <button onclick="startShindan()" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-full shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all w-full text-sm">
                     診断をスタート
@@ -57,18 +57,26 @@
                 <div id="shindan-options" class="space-y-3"></div>
             </div>
 
-            <div id="shindan-result" class="hidden">
+              <div id="shindan-result" class="hidden">
                 <div class="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2">Diagnosis Result</div>
-                <h4 class="text-base font-bold text-gray-500 mb-4">あなたにおすすめの推しメンは...</h4>
-                <div class="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100/50 mb-6 flex flex-col items-center">
+                <h4 class="text-base font-bold text-gray-500 mb-4">あなたと最も似ているのは...</h4>
+                <div class="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100/50 mb-4 flex flex-col items-center">
                     <img id="result-mem-img" src="" class="w-24 h-24 rounded-full object-cover mb-3 border-4 border-white shadow-md">
                     <div id="result-mem-name" class="text-xl font-black text-gray-800 mb-1"></div>
                     <p id="result-mem-intro" class="text-xs text-gray-600 leading-relaxed mt-2 text-center max-w-xs"></p>
                 </div>
+
+                <button id="share-x-btn" class="w-full bg-black text-white font-bold py-3 px-4 rounded-xl text-xs mb-4 flex items-center justify-center gap-2 hover:opacity-90 shadow-md">
+                    <i class="fa-brands fa-x-twitter text-sm"></i> 診断結果をXでポストする
+                </button>
+
                 <div class="flex gap-2">
-                    <a href="index.html" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl text-xs shadow-md flex items-center justify-center">プロフィールに戻る</a>
-                    <button onclick="startShindan()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl text-xs">もう一度診断する</button>
-                </div>
+                    <a id="go-profile-btn" href="#" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl text-xs shadow-md flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-user"></i> 詳しく知る
+                    </a>
+                    <button onclick="startShindan()" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl text-xs">
+                        もう一度診断
+                    </button>
             </div>
         </div>
     </main>
@@ -211,7 +219,18 @@
             if (m) {
                 document.getElementById('result-mem-img').src = m.image || '';
                 document.getElementById('result-mem-name').innerText = (m.symbol || '') + ' ' + m.name;
-                document.getElementById('result-mem-intro').innerText = m.description || 'あなたにぴったりの推しメンです！';
+                document.getElementById('result-mem-intro').innerText = m.description || 'あなたと最も感覚が近いのはこの人！';
+
+                // 詳しく知るボタンのリンク先（index.htmlにID付きのハッシュを付けて送る）
+                document.getElementById('go-profile-btn').href = `index.html#member-${m.id}`;
+
+                // Xでシェアボタンの設定
+                document.getElementById('share-x-btn').onclick = function() {
+                    const shareText = `私と最も感覚が近いメンバーは ${displayName} 】でした！✨\nみんなも診断してみてね！\n`;
+                    // 現在のページのURL（または公開したトップページのURLに書き換えてください）
+                    const shareUrl = https://sea25ku.github.io/shindan.html; 
+                    const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+                    window.open(xUrl, '_blank');
             }
         }
 
