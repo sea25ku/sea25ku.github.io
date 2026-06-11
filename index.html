@@ -264,7 +264,11 @@
             'りょう': { bg: '#dbeafe', text: '#1e40af' }, 'りんと': { bg: '#fef9c3', text: '#854d0e' }
         };
 
-        window.onload = function() { init(); };
+        window.onload = async function() {
+            // initを非同期対応(async/await)にして、データ読み込み完了を待ってからハッシュをチェックします
+            await init(); 
+            checkUrlHash(); 
+        };
 
         async function init() {
             document.getElementById('loader').classList.remove('hidden');
@@ -457,6 +461,25 @@
         }
         function goHome() { showPage('home'); }
         function toggleMenu() { document.getElementById('side-menu').classList.toggle('hidden'); }
+
+        // URLの末尾（#member-〇〇）をチェックして、自動でメンバー詳細を開く関数
+        function checkUrlHash() {
+            const hash = window.location.hash;
+            
+            // URLに「#member-メンバーID」が含まれている場合
+            if (hash && hash.startsWith('#member-')) {
+                // ハッシュからID（数字など）だけを取り出す
+                const memberId = hash.replace('#member-', '');
+                
+                // 念のため少しだけ待ってから、詳細ページを表示する関数を呼び出す
+                setTimeout(() => {
+                    showMemberPage(memberId);
+                    
+                    // 処理が終わったら、URLの見た目を綺麗にするためにハッシュを消去する（任意）
+                    history.replaceState(null, null, ' ');
+                }, 100);
+            }
+        }
     </script>
 </body>
 </html>
